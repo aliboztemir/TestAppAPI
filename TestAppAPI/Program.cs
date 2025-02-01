@@ -1,18 +1,32 @@
-﻿using TestAppAPI.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using TestAppAPI.Data;
+using TestAppAPI.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+// Kullanılacak veritabanını belirle
+var useSqlite = builder.Configuration.GetValue<bool>("UseSqlite");
+
+if (useSqlite)
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(builder.Configuration.GetConnectionString("SQLiteConnection")));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("MSSQLConnection")));
+}
+
+// Dependency Injection
+builder.Services.AddScoped<IStudyGroupRepository, StudyGroupRepository>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 📌 Register IStudyGroupRepository with its implementation
-builder.Services.AddScoped<IStudyGroupRepository, StudyGroupRepository>();
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

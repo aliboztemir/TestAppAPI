@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace TestAppAPI.Models
 {
@@ -13,8 +14,11 @@ namespace TestAppAPI.Models
             CreateDate = createDate;
             Users = users;
         }
+        public StudyGroup() { }
 
-        public int StudyGroupId { get; }
+        [Key]  // ✅ EF Core'un StudyGroupId'yi Primary Key olarak tanımasını sağlar
+        public int StudyGroupId { get; set; }
+
         public string Name { get; }
         public Subject Subject { get; }
         public DateTime CreateDate { get; }
