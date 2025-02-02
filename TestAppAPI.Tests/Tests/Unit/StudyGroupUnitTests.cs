@@ -1,9 +1,6 @@
-﻿using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using TestAppAPI.Models;
+﻿using TestAppAPI.Models;
 
-namespace TestAppAPI.Tests
+namespace TestAppAPI.Tests.Unit
 {
     [TestFixture]
     public class StudyGroupUnitTests

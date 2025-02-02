@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using TestAppAPI.Models;
+﻿using TestAppAPI.Models;
 
 namespace TestAppAPI.Repositories
 {
