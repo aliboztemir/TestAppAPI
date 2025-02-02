@@ -6,9 +6,9 @@ using TestAppAPI.Models;
 namespace TestAppAPI.Tests
 {
     [TestFixture]
-    public class StudyGroupTests
+    public class StudyGroupUnitTests
     {
-        // ✅ StudyGroup Başlangıç Testleri
+        // ✅ 1️⃣ StudyGroup Başlangıç Testleri
         [Test]
         public void StudyGroup_Should_Set_Correct_Id()
         {
@@ -37,7 +37,25 @@ namespace TestAppAPI.Tests
             Assert.AreNotEqual(default(DateTime), studyGroup.CreateDate);
         }
 
-        // ✅ StudyGroup İsim Kontrolleri
+        // 🔹 1.1 StudyGroup kullanıcı listesi `null` verilirse, boş liste olarak atanmalı
+        [Test]
+        public void StudyGroup_Should_Initialize_Empty_User_List_If_Null_Is_Provided()
+        {
+            var studyGroup = new StudyGroup(2, "Science Club", Subject.Chemistry, DateTime.Now, null);
+            Assert.IsNotNull(studyGroup.Users);
+            Assert.AreEqual(0, studyGroup.Users.Count);
+        }
+
+        // 🔹 1.2 Negatif ID değerine izin verilmemeli
+        [Test]
+        public void StudyGroup_Should_Not_Allow_Negative_StudyGroupId()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new StudyGroup(-1, "Negative ID Club", Subject.Physics, DateTime.Now, new List<User>())
+            );
+        }
+
+        // ✅ 2️⃣ StudyGroup İsim Doğrulama Testleri
         [Test]
         public void StudyGroup_Name_Should_Be_At_Least_5_Chars()
         {
@@ -66,7 +84,24 @@ namespace TestAppAPI.Tests
             );
         }
 
-        // ✅ StudyGroup Kullanıcı Yönetimi Testleri
+        // 🔹 2.1 Tam 5 karakter uzunluğundaki isimler geçerli olmalı
+        [Test]
+        public void StudyGroup_Name_Should_Allow_Exact_5_Chars()
+        {
+            var studyGroup = new StudyGroup(5, "Group", Subject.Math, DateTime.Now, new List<User>());
+            Assert.AreEqual("Group", studyGroup.Name);
+        }
+
+        // 🔹 2.2 Tam 30 karakter uzunluğundaki isimler geçerli olmalı
+        [Test]
+        public void StudyGroup_Name_Should_Allow_Exact_30_Chars()
+        {
+            var validName = "ValidGroupNameWith30CharsLong";
+            var studyGroup = new StudyGroup(6, validName, Subject.Math, DateTime.Now, new List<User>());
+            Assert.AreEqual(validName, studyGroup.Name);
+        }
+
+        // ✅ 3️⃣ Kullanıcı Yönetimi Testleri
         [Test]
         public void AddUser_Should_Increase_User_Count()
         {
@@ -109,7 +144,23 @@ namespace TestAppAPI.Tests
             Assert.Throws<InvalidOperationException>(() => studyGroup.RemoveUser(user));
         }
 
-        // ✅ StudyGroup Geçersiz Giriş Testleri
+        // 🔹 3.1 `null` bir kullanıcı eklenmemeli
+        [Test]
+        public void AddUser_Should_Throw_Exception_If_User_Is_Null()
+        {
+            var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
+            Assert.Throws<ArgumentNullException>(() => studyGroup.AddUser(null));
+        }
+
+        // 🔹 3.2 `null` bir kullanıcı silinmemeli
+        [Test]
+        public void RemoveUser_Should_Throw_Exception_If_User_Is_Null()
+        {
+            var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
+            Assert.Throws<ArgumentNullException>(() => studyGroup.RemoveUser(null));
+        }
+
+        // ✅ 4️⃣ Geçersiz Giriş ve Uç Durum Testleri
         [Test]
         public void StudyGroup_Should_Only_Allow_Valid_Subjects()
         {
@@ -126,7 +177,7 @@ namespace TestAppAPI.Tests
             );
         }
 
-        // ✅ StudyGroup Genel Başlangıç Testi
+        // ✅ 5️⃣ Genel Başlangıç Testi
         [Test]
         public void StudyGroup_Should_Have_Valid_Initial_State()
         {
