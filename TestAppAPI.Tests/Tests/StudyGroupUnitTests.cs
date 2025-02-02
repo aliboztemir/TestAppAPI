@@ -8,7 +8,6 @@ namespace TestAppAPI.Tests
     [TestFixture]
     public class StudyGroupUnitTests
     {
-        // ✅ 1️⃣ StudyGroup Başlangıç Testleri
         [Test]
         public void StudyGroup_Should_Set_Correct_Id()
         {
@@ -37,7 +36,6 @@ namespace TestAppAPI.Tests
             Assert.AreNotEqual(default(DateTime), studyGroup.CreateDate);
         }
 
-        // 🔹 1.1 StudyGroup kullanıcı listesi `null` verilirse, boş liste olarak atanmalı
         [Test]
         public void StudyGroup_Should_Initialize_Empty_User_List_If_Null_Is_Provided()
         {
@@ -46,7 +44,6 @@ namespace TestAppAPI.Tests
             Assert.AreEqual(0, studyGroup.Users.Count);
         }
 
-        // 🔹 1.2 Negatif ID değerine izin verilmemeli
         [Test]
         public void StudyGroup_Should_Not_Allow_Negative_StudyGroupId()
         {
@@ -55,7 +52,6 @@ namespace TestAppAPI.Tests
             );
         }
 
-        // ✅ 2️⃣ StudyGroup İsim Doğrulama Testleri
         [Test]
         public void StudyGroup_Name_Should_Be_At_Least_5_Chars()
         {
@@ -84,7 +80,6 @@ namespace TestAppAPI.Tests
             );
         }
 
-        // 🔹 2.1 Tam 5 karakter uzunluğundaki isimler geçerli olmalı
         [Test]
         public void StudyGroup_Name_Should_Allow_Exact_5_Chars()
         {
@@ -92,7 +87,6 @@ namespace TestAppAPI.Tests
             Assert.AreEqual("Group", studyGroup.Name);
         }
 
-        // 🔹 2.2 Tam 30 karakter uzunluğundaki isimler geçerli olmalı
         [Test]
         public void StudyGroup_Name_Should_Allow_Exact_30_Chars()
         {
@@ -101,7 +95,6 @@ namespace TestAppAPI.Tests
             Assert.AreEqual(validName, studyGroup.Name);
         }
 
-        // ✅ 3️⃣ Kullanıcı Yönetimi Testleri
         [Test]
         public void AddUser_Should_Increase_User_Count()
         {
@@ -144,7 +137,6 @@ namespace TestAppAPI.Tests
             Assert.Throws<InvalidOperationException>(() => studyGroup.RemoveUser(user));
         }
 
-        // 🔹 3.1 `null` bir kullanıcı eklenmemeli
         [Test]
         public void AddUser_Should_Throw_Exception_If_User_Is_Null()
         {
@@ -152,7 +144,6 @@ namespace TestAppAPI.Tests
             Assert.Throws<ArgumentNullException>(() => studyGroup.AddUser(null));
         }
 
-        // 🔹 3.2 `null` bir kullanıcı silinmemeli
         [Test]
         public void RemoveUser_Should_Throw_Exception_If_User_Is_Null()
         {
@@ -160,7 +151,6 @@ namespace TestAppAPI.Tests
             Assert.Throws<ArgumentNullException>(() => studyGroup.RemoveUser(null));
         }
 
-        // ✅ 4️⃣ Geçersiz Giriş ve Uç Durum Testleri
         [Test]
         public void StudyGroup_Should_Only_Allow_Valid_Subjects()
         {
@@ -177,7 +167,6 @@ namespace TestAppAPI.Tests
             );
         }
 
-        // ✅ 5️⃣ Genel Başlangıç Testi
         [Test]
         public void StudyGroup_Should_Have_Valid_Initial_State()
         {

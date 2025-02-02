@@ -129,7 +129,7 @@ namespace TestAppAPI.Tests
             await _dbContext.StudyGroups.AddAsync(firstStudyGroup);
             await _dbContext.SaveChangesAsync();
 
-            // Act - Kullanıcı aynı subject ile ikinci grup oluşturuyor
+            // Act - The user creates a second group with the same subject
             var result = await _controller.CreateStudyGroup(secondStudyGroup) as BadRequestObjectResult;
 
             // Assert
@@ -151,7 +151,7 @@ namespace TestAppAPI.Tests
             await _dbContext.StudyGroups.AddAsync(firstStudyGroup);
             await _dbContext.SaveChangesAsync();
 
-            // Act - Başka bir kullanıcı, aynı subject ile yeni bir grup oluşturuyor
+            // Act - Another user creates a new group with the same subject
             var result = await _controller.CreateStudyGroup(secondStudyGroup) as BadRequestObjectResult;
 
             // Assert

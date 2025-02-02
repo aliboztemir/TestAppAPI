@@ -4,7 +4,7 @@ using TestAppAPI.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Kullanılacak veritabanını belirle
+// Specify the database to be used
 var useSqlite = builder.Configuration.GetValue<bool>("UseSqlite");
 
 if (useSqlite)

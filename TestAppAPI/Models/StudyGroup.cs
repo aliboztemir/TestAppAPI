@@ -16,7 +16,7 @@ namespace TestAppAPI.Models
         }
         public StudyGroup() { }
 
-        [Key]  // ✅ EF Core'un StudyGroupId'yi Primary Key olarak tanımasını sağlar
+        [Key]  // ✅ Ensures EF Core recognizes StudyGroupId as the Primary Key
         public int StudyGroupId { get; set; }
 
         public string Name { get; }
