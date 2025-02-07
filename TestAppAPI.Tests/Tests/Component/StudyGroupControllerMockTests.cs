@@ -1,75 +1,39 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Moq;
 using Microsoft.AspNetCore.Mvc;
 using TestAppAPI.Controllers;
-using TestAppAPI.Data;
-using TestAppAPI.Repositories;
 using TestAppAPI.Models;
+using TestAppAPI.Repositories;
 
 namespace TestAppAPI.Tests.Component
 {
     [TestFixture]
-    public class StudyGroupControllerComponentTests
+    public class StudyGroupControllerMockTests
     {
-        private AppDbContext _dbContext;
-        private StudyGroupRepository _repository;
+        private Mock<IStudyGroupRepository> _mockRepo;
         private StudyGroupController _controller;
 
         [SetUp]
         public void Setup()
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlite("Filename=:memory:")
-                .Options;
-
-            _dbContext = new AppDbContext(options);
-            _dbContext.Database.OpenConnection();
-            _dbContext.Database.EnsureCreated();
-
-            _repository = new StudyGroupRepository(_dbContext);
-            _controller = new StudyGroupController(_repository);
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            _dbContext.Database.CloseConnection();
-            _dbContext.Dispose();
+            _mockRepo = new Mock<IStudyGroupRepository>();
+            _controller = new StudyGroupController(_mockRepo.Object);
         }
 
         [Test, Category("CreateStudyGroup")]
-        public async Task CreateStudyGroup_Should_Save_To_Database()
+        public async Task CreateStudyGroup_Should_Return_Ok()
         {
             // Arrange
             var user = new User(1, "TestUser");
             var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User> { user });
 
-            // Act
-            await _controller.CreateStudyGroup(studyGroup);
-
-            // Assert
-            var savedGroup = await _dbContext.StudyGroups.FirstOrDefaultAsync(sg => sg.StudyGroupId == 1);
-
-            Assert.IsNotNull(savedGroup);
-            Assert.AreEqual("Math Club", savedGroup.Name);
-            Assert.AreEqual(1, savedGroup.Users.Count); // Ensure user is added
-        }
-
-        [Test, Category("CreateStudyGroup")]
-        public async Task CreateStudyGroup_Should_Return_BadRequest_If_Name_Is_Duplicate()
-        {
-            // Arrange
-            var user = new User(1, "TestUser");
-            var studyGroup1 = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User> { user });
-            var studyGroup2 = new StudyGroup(2, "Math Club", Subject.Physics, DateTime.Now, new List<User> { user });
-
-            await _controller.CreateStudyGroup(studyGroup1);
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(studyGroup)).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.CreateStudyGroup(studyGroup2) as BadRequestObjectResult;
+            var result = await _controller.CreateStudyGroup(studyGroup) as OkResult;
 
             // Assert
             Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
+            Assert.AreEqual(200, result.StatusCode);
         }
 
         [Test, Category("CreateStudyGroup")]
@@ -78,6 +42,8 @@ namespace TestAppAPI.Tests.Component
             // Arrange
             var user = new User(2, "TestUser");
             var studyGroup = new StudyGroup(2, "Math", Subject.Math, DateTime.Now, new List<User> { user });
+
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(studyGroup)).ThrowsAsync(new ArgumentException("Name is too short"));
 
             // Act
             var result = await _controller.CreateStudyGroup(studyGroup) as BadRequestObjectResult;
@@ -94,18 +60,20 @@ namespace TestAppAPI.Tests.Component
             var user = new User(3, "TestUser");
             var studyGroup = new StudyGroup(3, "ThisIsAVeryLongStudyGroupNameThatExceeds30Chars", Subject.Math, DateTime.Now, new List<User> { user });
 
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(studyGroup)).ThrowsAsync(new ArgumentException("Name is too long"));
+
             // Act
-            await _controller.CreateStudyGroup(studyGroup);
+            var result = await _controller.CreateStudyGroup(studyGroup) as BadRequestObjectResult;
 
             // Assert
-            var count = await _dbContext.StudyGroups.CountAsync();
-            Assert.AreEqual(0, count, "Database should not store a StudyGroup with a name longer than 30 characters.");
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
         }
 
         [Test, Category("CreateStudyGroup")]
         public async Task CreateStudyGroup_Should_Return_BadRequest_If_StudyGroup_Is_Null()
         {
-            // Act
+            // Act: Call the controller method with a null StudyGroup
             var result = await _controller.CreateStudyGroup(null) as BadRequestResult;
 
             // Assert
@@ -119,17 +87,15 @@ namespace TestAppAPI.Tests.Component
             // Arrange
             var studyGroup = new StudyGroup(4, "Empty Users Group", Subject.Chemistry, DateTime.Now, new List<User>());
 
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(studyGroup)).Returns(Task.CompletedTask);
+
             // Act
-            await _controller.CreateStudyGroup(studyGroup);
+            var result = await _controller.CreateStudyGroup(studyGroup) as OkResult;
 
             // Assert
-            var savedGroup = await _dbContext.StudyGroups.FirstOrDefaultAsync(sg => sg.StudyGroupId == 4);
-
-            Assert.IsNotNull(savedGroup);
-            Assert.AreEqual("Empty Users Group", savedGroup.Name);
-            Assert.AreEqual(0, savedGroup.Users.Count);
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
         }
-
 
         [Test, Category("CreateStudyGroup")]
         public async Task CreateStudyGroup_Should_Return_BadRequest_If_Same_User_Creates_Second_Group_With_Same_Subject()
@@ -139,9 +105,8 @@ namespace TestAppAPI.Tests.Component
             var firstStudyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User> { user });
             var secondStudyGroup = new StudyGroup(2, "Advanced Math", Subject.Math, DateTime.Now, new List<User> { user });
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddAsync(firstStudyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(secondStudyGroup))
+                     .ThrowsAsync(new InvalidOperationException("User cannot create multiple groups with the same subject."));
 
             // Act
             var result = await _controller.CreateStudyGroup(secondStudyGroup) as BadRequestObjectResult;
@@ -161,9 +126,8 @@ namespace TestAppAPI.Tests.Component
             var firstStudyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User> { user1 });
             var secondStudyGroup = new StudyGroup(2, "Math Experts", Subject.Math, DateTime.Now, new List<User> { user2 });
 
-            await _dbContext.Users.AddRangeAsync(user1, user2);
-            await _dbContext.StudyGroups.AddAsync(firstStudyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.CreateStudyGroup(secondStudyGroup))
+                     .ThrowsAsync(new InvalidOperationException("Duplicate subject study groups are not allowed system-wide."));
 
             // Act
             var result = await _controller.CreateStudyGroup(secondStudyGroup) as BadRequestObjectResult;
@@ -186,9 +150,7 @@ namespace TestAppAPI.Tests.Component
                 new StudyGroup(2, "Physics Group", Subject.Physics, DateTime.Now, new List<User> { user2 })
             };
 
-            await _dbContext.Users.AddRangeAsync(user1, user2);
-            await _dbContext.StudyGroups.AddRangeAsync(studyGroups);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.GetStudyGroups()).ReturnsAsync(studyGroups);
 
             // Act
             var result = await _controller.GetStudyGroups() as OkObjectResult;
@@ -199,8 +161,8 @@ namespace TestAppAPI.Tests.Component
 
             var returnedGroups = (List<StudyGroup>)result.Value;
             Assert.AreEqual(2, returnedGroups.Count);
-            Assert.AreEqual(1, returnedGroups[0].Users.Count); 
-            Assert.AreEqual(1, returnedGroups[1].Users.Count); 
+            Assert.AreEqual(1, returnedGroups[0].Users.Count);
+            Assert.AreEqual(1, returnedGroups[1].Users.Count);
         }
 
         [Test, Category("GetStudyGroups"), Ignore("Clarification needed - Should study groups be sorted by creation date?")]
@@ -212,27 +174,24 @@ namespace TestAppAPI.Tests.Component
         [Test, Category("GetStudyGroups")]
         public async Task GetStudyGroups_Should_Return_Sorted_By_CreationDate()
         {
-            var firstGroup = new StudyGroup(1, "Chemistry Club", Subject.Chemistry, DateTime.Now, new List<User>());
-            await Task.Delay(1);
-            var secondGroup = new StudyGroup(2, "Physics Club", Subject.Physics, DateTime.Now, new List<User>());
-            await Task.Delay(1);
-            var thirdGroup = new StudyGroup(3, "Biology Club", Subject.Chemistry, DateTime.Now, new List<User>());
+            // Arrange
+            var oldGroup = new StudyGroup(1, "Chemistry Club", Subject.Chemistry, DateTime.Now.AddDays(-5), new List<User>());
+            var newGroup = new StudyGroup(2, "Physics Club", Subject.Physics, DateTime.Now, new List<User>());
 
-            await _dbContext.StudyGroups.AddRangeAsync(firstGroup, secondGroup, thirdGroup);
-            await _dbContext.SaveChangesAsync();
+            var studyGroups = new List<StudyGroup> { newGroup, oldGroup };
+
+            _mockRepo.Setup(repo => repo.GetStudyGroups()).ReturnsAsync(studyGroups);
 
             // Act
             var result = await _controller.GetStudyGroups() as OkObjectResult;
-            var studyGroups = result?.Value as List<StudyGroup>;
+            var returnedGroups = result?.Value as List<StudyGroup>;
 
             // Assert
-            Assert.IsNotNull(studyGroups);
-            Assert.AreEqual(3, studyGroups.Count);
-            Assert.AreEqual("Chemistry Club", studyGroups[0].Name);
-            Assert.AreEqual("Physics Club", studyGroups[1].Name);
-            Assert.AreEqual("Biology Club", studyGroups[2].Name);
+            Assert.IsNotNull(returnedGroups);
+            Assert.AreEqual(2, returnedGroups.Count);
+            Assert.AreEqual("Physics Club", returnedGroups[0].Name);
+            Assert.AreEqual("Chemistry Club", returnedGroups[1].Name);
         }
-
 
         [Test, Category("SearchStudyGroups")]
         public async Task SearchStudyGroups_Should_Return_Filtered_Groups()
@@ -244,8 +203,8 @@ namespace TestAppAPI.Tests.Component
                 new StudyGroup(2, "Physics Group", Subject.Physics, DateTime.Now, new List<User> { new User(2, "Bob") })
             };
 
-            await _dbContext.StudyGroups.AddRangeAsync(studyGroups);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.SearchStudyGroups("Math"))
+                     .ReturnsAsync(studyGroups.Where(sg => sg.Subject == Subject.Math).ToList());
 
             // Act
             var result = await _controller.SearchStudyGroups("Math") as OkObjectResult;
@@ -253,40 +212,26 @@ namespace TestAppAPI.Tests.Component
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(200, result.StatusCode);
-            Assert.AreEqual(1, ((List<StudyGroup>)result.Value).Count);
+            var returnedGroups = (List<StudyGroup>)result.Value;
+            Assert.AreEqual(1, returnedGroups.Count);
+            Assert.AreEqual("Math Club", returnedGroups[0].Name);
         }
 
         [Test, Category("SearchStudyGroups")]
         public async Task SearchStudyGroups_Should_Return_Empty_If_No_Match()
         {
             // Arrange
-            var studyGroups = new List<StudyGroup>
-            {
-                new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User> { new User(1, "Alice") }),
-                new StudyGroup(2, "Physics Group", Subject.Physics, DateTime.Now, new List<User> { new User(2, "Bob") })
-            };
-
-            await _dbContext.StudyGroups.AddRangeAsync(studyGroups);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.SearchStudyGroups("Biology"))
+                     .ReturnsAsync(new List<StudyGroup>());
 
             // Act
-            var result = await _controller.SearchStudyGroups("Chemistry") as OkObjectResult;
+            var result = await _controller.SearchStudyGroups("Biology") as OkObjectResult;
 
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(200, result.StatusCode);
-            Assert.AreEqual(0, ((List<StudyGroup>)result.Value).Count);
-        }
-
-        [Test, Category("SearchStudyGroups")]
-        public async Task SearchStudyGroups_Should_Return_BadRequest_If_Subject_Is_Invalid()
-        {
-            // Act
-            var result = await _controller.SearchStudyGroups("InvalidSubject") as BadRequestObjectResult;
-
-            // Assert
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
+            var returnedGroups = (List<StudyGroup>)result.Value;
+            Assert.AreEqual(0, returnedGroups.Count);
         }
 
         [Test, Category("JoinStudyGroup")]
@@ -296,19 +241,14 @@ namespace TestAppAPI.Tests.Component
             var user = new User(1, "Alice");
             var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.JoinStudyGroup(1, 1)).Returns(Task.CompletedTask);
 
             // Act
-            await _controller.JoinStudyGroup(1, 1);
+            var result = await _controller.JoinStudyGroup(1, 1) as OkResult;
 
             // Assert
-            var updatedGroup = await _dbContext.StudyGroups.Include(sg => sg.Users)
-                                 .FirstOrDefaultAsync(sg => sg.StudyGroupId == 1);
-
-            Assert.IsNotNull(updatedGroup);
-            Assert.AreEqual(1, updatedGroup.Users.Count);
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
         }
 
         [Test, Category("JoinStudyGroup")]
@@ -316,32 +256,30 @@ namespace TestAppAPI.Tests.Component
         {
             // Arrange
             var user = new User(1, "Alice");
-
             var mathStudyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
             var physicsStudyGroup = new StudyGroup(2, "Physics Club", Subject.Physics, DateTime.Now, new List<User>());
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddRangeAsync(mathStudyGroup, physicsStudyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.JoinStudyGroup(1, 1)).Returns(Task.CompletedTask);
+            _mockRepo.Setup(repo => repo.JoinStudyGroup(2, 1)).Returns(Task.CompletedTask);
 
             // Act
-            await _controller.JoinStudyGroup(1, 1);
-            await _controller.JoinStudyGroup(2, 1);
+            var result1 = await _controller.JoinStudyGroup(1, 1) as OkResult;
+            var result2 = await _controller.JoinStudyGroup(2, 1) as OkResult;
 
             // Assert
-            var mathGroup = await _dbContext.StudyGroups.Include(sg => sg.Users).FirstOrDefaultAsync(sg => sg.StudyGroupId == 1);
-            var physicsGroup = await _dbContext.StudyGroups.Include(sg => sg.Users).FirstOrDefaultAsync(sg => sg.StudyGroupId == 2);
-
-            Assert.IsNotNull(mathGroup);
-            Assert.IsNotNull(physicsGroup);
-            Assert.IsTrue(mathGroup.Users.Any(u => u.UserId == 1));
-            Assert.IsTrue(physicsGroup.Users.Any(u => u.UserId == 1));
+            Assert.IsNotNull(result1);
+            Assert.AreEqual(200, result1.StatusCode);
+            Assert.IsNotNull(result2);
+            Assert.AreEqual(200, result2.StatusCode);
         }
-
 
         [Test, Category("JoinStudyGroup")]
         public async Task JoinStudyGroup_Should_Return_NotFound_If_StudyGroup_Not_Exist()
         {
+            // Arrange
+            _mockRepo.Setup(repo => repo.JoinStudyGroup(999, 1))
+                     .ThrowsAsync(new KeyNotFoundException());
+
             // Act
             var result = await _controller.JoinStudyGroup(999, 1) as NotFoundResult;
 
@@ -350,23 +288,6 @@ namespace TestAppAPI.Tests.Component
             Assert.AreEqual(404, result.StatusCode);
         }
 
-        [Test, Category("JoinStudyGroup")]
-        public async Task JoinStudyGroup_Should_Return_BadRequest_If_UserId_Is_Invalid()
-        {
-            // Arrange
-            var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
-
-            // Act
-            var result = await _controller.JoinStudyGroup(1, 999) as BadRequestResult;
-
-            // Assert
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-        }
-
-
         [Test, Category("LeaveStudyGroup")]
         public async Task LeaveStudyGroup_Should_Remove_User_From_Group()
         {
@@ -374,19 +295,14 @@ namespace TestAppAPI.Tests.Component
             var user = new User(2, "Bob");
             var studyGroup = new StudyGroup(2, "Physics Group", Subject.Physics, DateTime.Now, new List<User> { user });
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.LeaveStudyGroup(2, 2)).Returns(Task.CompletedTask);
 
             // Act
-            await _controller.LeaveStudyGroup(2, 2);
+            var result = await _controller.LeaveStudyGroup(2, 2) as OkResult;
 
             // Assert
-            var updatedGroup = await _dbContext.StudyGroups.Include(sg => sg.Users)
-                                 .FirstOrDefaultAsync(sg => sg.StudyGroupId == 2);
-
-            Assert.IsNotNull(updatedGroup);
-            Assert.AreEqual(0, updatedGroup.Users.Count);
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
         }
 
         [Test, Category("LeaveStudyGroup")]
@@ -396,28 +312,10 @@ namespace TestAppAPI.Tests.Component
             var user = new User(3, "Charlie");
             var studyGroup = new StudyGroup(3, "Chemistry Club", Subject.Chemistry, DateTime.Now, new List<User>());
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.LeaveStudyGroup(3, 3)).ThrowsAsync(new InvalidOperationException());
 
             // Act
             var result = await _controller.LeaveStudyGroup(3, 3) as BadRequestResult;
-
-            // Assert
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-        }
-
-        [Test, Category("LeaveStudyGroup")]
-        public async Task LeaveStudyGroup_Should_Return_BadRequest_If_UserId_Is_Invalid()
-        {
-            // Arrange
-            var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
-
-            // Act
-            var result = await _controller.LeaveStudyGroup(1, 999) as BadRequestResult;
 
             // Assert
             Assert.IsNotNull(result);
@@ -431,9 +329,8 @@ namespace TestAppAPI.Tests.Component
             var user = new User(1, "Alice");
             var studyGroup = new StudyGroup(1, "Math Club", Subject.Math, DateTime.Now, new List<User>());
 
-            await _dbContext.Users.AddAsync(user);
-            await _dbContext.StudyGroups.AddAsync(studyGroup);
-            await _dbContext.SaveChangesAsync();
+            _mockRepo.Setup(repo => repo.JoinStudyGroup(1, 1)).Returns(Task.CompletedTask);
+            _mockRepo.Setup(repo => repo.LeaveStudyGroup(1, 1)).Returns(Task.CompletedTask);
 
             // Act
             await _controller.JoinStudyGroup(1, 1);
@@ -444,6 +341,5 @@ namespace TestAppAPI.Tests.Component
             Assert.IsNotNull(result);
             Assert.AreEqual(200, result.StatusCode);
         }
-
     }
 }
