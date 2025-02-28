@@ -2,7 +2,7 @@ trigger:
 - main
 
 pool:
-  name: 'RoniAgentFirst'  # Self-hosted agent pool adınızı girin
+  name: 'RoniAgentFirst'  # Self-hosted agent pool name
 
 variables:
   buildConfiguration: 'Release'
@@ -22,19 +22,32 @@ steps:
 - task: DotNetCoreCLI@2
   inputs:
     command: 'build'
-    projects: '**/*.csproj'
+    projects: 'TestAppAPI/TestAppAPI.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: 'TestAppAPI.Tests/TestAppAPI.Tests.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
   inputs:
     command: 'test'
-    projects: '**/*.Tests.csproj'
-    arguments: '--configuration $(buildConfiguration) --logger trx --results-directory $(System.DefaultWorkingDirectory)/TestResults'
+    projects: 'TestAppAPI.Tests/TestAppAPI.Tests.csproj'
+    arguments: '--configuration $(buildConfiguration) --filter FullyQualifiedName~TestAppAPI.Tests.Tests.Unit --logger trx --results-directory $(System.DefaultWorkingDirectory)/TestResults/UnitTests'
+  continueOnError: true
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
+    projects: 'TestAppAPI.Tests/TestAppAPI.Tests.csproj'
+    arguments: '--configuration $(buildConfiguration) --filter FullyQualifiedName~TestAppAPI.Tests.Tests.Component --logger trx --results-directory $(System.DefaultWorkingDirectory)/TestResults/ComponentTests'
   continueOnError: true
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'VSTest'
-    testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/*.trx'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/**/*.trx'
     mergeTestResults: true
     failTaskOnFailedTests: true
