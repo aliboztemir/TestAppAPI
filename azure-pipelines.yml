@@ -2,7 +2,9 @@ trigger:
 - main
 
 pool:
-  vmImage: 'windows-latest'
+  name: 'Default'  # Self-hosted agent pool adınızı girin
+  demands:
+    - agent.name -equals YourAgentName  # (Opsiyonel) Belirli bir agent seçmek için
 
 variables:
   buildConfiguration: 'Release'
