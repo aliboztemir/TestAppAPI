@@ -3,8 +3,6 @@ trigger:
 
 pool:
   name: 'RoniAgentFirst'  # Self-hosted agent pool adınızı girin
-  demands:
-    - agent.name -equals RoniAgentFirst  # (Opsiyonel) Belirli bir agent seçmek için
 
 variables:
   buildConfiguration: 'Release'
